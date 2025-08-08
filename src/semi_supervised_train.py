@@ -1,9 +1,9 @@
 import argparse, torch, tqdm, itertools
 from pathlib import Path
-from datasets import SkinPairDataset, UnlabeledDataset
-from model     import UNet
-from utils     import dice_score, find_pairs
-from ema       import update_ema
+from src.datasets import SkinPairDataset, UnlabeledDataset
+from src.model     import UNet
+from src.utils     import dice_score, find_pairs
+from src.ema       import update_ema
 import torch.nn.functional as F
 
 def run(args):
