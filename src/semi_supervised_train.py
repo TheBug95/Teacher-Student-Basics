@@ -8,20 +8,32 @@ import torch.nn.functional as F
 
 def run(args):
     # --- 1. Datos ----------------------------------------------------------
+    # --- 1. Datos ----------------------------------------------------------
     img_dir  = Path(args.images)
     mask_dir = Path(args.masks)
-    valid_split = args.valid_split if hasattr(args, 'valid_split') else 0.2
 
-    pairs = find_pairs(img_dir, mask_dir)
-    split = int(len(pairs)*0.8)
-    l_train = pairs[:split]
-    num_valid = int(len(l_train) * valid_split)
-    
-    l_train     = SkinPairDataset(l_train[:-num_valid])
-    l_val       = SkinPairDataset(l_train[-num_valid:])
-    unl_train   = SkinPairDataset(pairs[split:])
+    # 0. Parámetro para tamaño de validación
+    valid_split = getattr(args, "valid_split", 0.2)
 
-    u_train  = UnlabeledDataset(unl_train)
+    # 1. Hallar todos los pares (ruta_img, ruta_mask)
+    pairs = find_pairs(img_dir, mask_dir)          # len(pairs) = N
+
+    # 2. Dividir labeled / unlabeled (80 % / 20 % ejemplo)
+    cut = int(len(pairs) * 0.8)
+
+    # ── Bloque labeled (que SÍ usa la máscara) ──────────────────────────
+    labeled_pairs   = pairs[:cut]                  # 80 %
+    num_valid       = int(len(labeled_pairs) * valid_split)
+
+    train_pairs     = labeled_pairs[:-num_valid]   # 80 % * 80 %
+    val_pairs       = labeled_pairs[-num_valid:]   # 80 % * 20 %
+
+    l_train = SkinPairDataset(train_pairs)         # weak, strong, mask
+    l_val   = SkinPairDataset(val_pairs)
+
+    # ── Bloque unlabeled (que IGNORA la máscara) ────────────────────────
+    unlabeled_paths = [img_path for img_path, _ in pairs[cut:]]   # solo la ruta IMG
+    u_train = UnlabeledDataset(unlabeled_paths)    # weak, strong
 
     l_dl = torch.utils.data.DataLoader(l_train, batch_size=args.bs, shuffle=True)
     u_dl = torch.utils.data.DataLoader(u_train, batch_size=args.bs, shuffle=True)
