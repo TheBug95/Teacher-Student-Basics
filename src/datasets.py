@@ -31,7 +31,24 @@ class SkinPairDataset(Dataset):
 
     def __getitem__(self, idx):
         img_p, msk_p = self.pairs[idx]
-        img  = self.transform_img(Image.open(img_p).convert("RGB"))
+        self.w_t = weak_transform()     # reemplaza transform_img
+        self.s_t = strong_transform()
         mask = self.transform_mask(Image.open(msk_p).convert("L"))
         mask = (mask > .5).float()          # binariza
-        return img, mask
+        return self.w_t(img), self.s_t(img), mask
+
+from augmentations import weak_transform, strong_transform
+
+class UnlabeledDataset(Dataset):
+    """Devuelve (weak_tensor, strong_tensor) para imágenes sin máscara."""
+    def __init__(self, img_paths):
+        self.imgs = img_paths
+        self.w_t = weak_transform()
+        self.s_t = strong_transform()
+
+    def __len__(self): return len(self.imgs)
+
+    def __getitem__(self, idx):
+        from PIL import Image
+        img = Image.open(self.imgs[idx]).convert("RGB")
+        return self.w_t(img), self.s_t(img)

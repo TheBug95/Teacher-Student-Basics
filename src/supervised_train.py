@@ -1,9 +1,9 @@
 import argparse, torch, tqdm
 from pathlib import Path
 
-from datasets import SkinPairDataset
-from model     import UNet
-from utils     import dice_score, find_pairs
+from src.datasets import SkinPairDataset
+from src.model     import UNet
+from src.utils     import dice_score, find_pairs
 
 def run(args):
     img_dir  = Path(args.images)
