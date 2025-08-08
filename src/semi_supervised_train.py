@@ -87,7 +87,6 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--images", required=True)
     p.add_argument("--masks",  required=True)
-    p.add_argument("--unlabeled", required=True)
     p.add_argument("--bs", type=int, default=8)
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--epochs", type=int, default=30)
