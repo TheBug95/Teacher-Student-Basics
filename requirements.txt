@@ -3,4 +3,8 @@ torchvision>=0.17
 numpy
 pillow
 tqdm
+peft
+bitsandbytes
+transformers
 torchmetrics
+
