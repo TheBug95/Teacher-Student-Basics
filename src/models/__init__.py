@@ -2,6 +2,8 @@
 
 from typing import Any
 
+from .sam_lora import load_model
+
 
 def get_model(name: str, **kwargs: Any):
     """Devuelve una instancia de modelo dada su cadena de nombre.
@@ -28,3 +30,6 @@ def get_model(name: str, **kwargs: Any):
         from .sam import MobileSAM
         return MobileSAM(**kwargs)
     raise ValueError(f"Modelo desconocido: {name}")
+
+
+__all__ = ["get_model", "load_model"]

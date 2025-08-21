@@ -1,8 +1,7 @@
-"""
-Herramientas para adaptar modelos SAM2 y MedSAM2 con LoRA o QLoRA.
+"""Herramientas para adaptar modelos SAM2 y MedSAM2 con LoRA o QLoRA.
 
 Este módulo usa la librería `peft` para añadir adaptadores de bajo
-rango a los modelos de segmentación.  Utilice `load_model` para obtener
+rango a los modelos de segmentación. Utilice :func:`load_model` para obtener
 un modelo con los adaptadores deseados.
 """
 
