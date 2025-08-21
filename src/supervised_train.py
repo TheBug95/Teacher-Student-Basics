@@ -1,9 +1,16 @@
+
+import argparse, torch, tqdm
+from pathlib import Path
+
+from src.datasets import SkinPairDataset
+from src.metrics import dice_score, iou_score, ssim_score
+from src.utils import find_pairs
 import argparse, torch, tqdm
 from pathlib import Path
 
 from src.datasets import SkinPairDataset
 from src.models   import get_model
-from src.utils    import dice_score, find_pairs
+
 
 def run(args):
     img_dir  = Path(args.images)
@@ -23,29 +30,37 @@ def run(args):
     crit   = torch.nn.BCEWithLogitsLoss()
 
     for epoch in range(args.epochs):
-        model.train(); tl, td = 0, 0
+        model.train(); tl, td, ti, ts = 0, 0, 0, 0
         for x, y in tqdm.tqdm(train_dl, desc=f"Epoch {epoch+1}/{args.epochs}"):
             x, y = x.to(device), y.to(device)
             opt.zero_grad()
             logits = model(x)
             loss = crit(logits, y)
             loss.backward(); opt.step()
-            tl += loss.item()*x.size(0)
-            td += dice_score(logits, y).item()*x.size(0)
-        tl /= len(train_ds); td /= len(train_ds)
+            tl += loss.item() * x.size(0)
+            td += dice_score(logits, y).item() * x.size(0)
+            ti += iou_score(logits, y).item() * x.size(0)
+            ts += ssim_score(logits, y).item() * x.size(0)
+        tl /= len(train_ds); td /= len(train_ds); ti /= len(train_ds); ts /= len(train_ds)
 
-        model.eval(); vl, vd = 0, 0
+        model.eval(); vl, vd, vi, vs = 0, 0, 0, 0
         with torch.no_grad():
             for x, y in val_dl:
                 x, y = x.to(device), y.to(device)
                 logits = model(x)
-                vl += crit(logits, y).item()*x.size(0)
-                vd += dice_score(logits, y).item()*x.size(0)
-        vl /= len(val_ds); vd /= len(val_ds)
+                vl += crit(logits, y).item() * x.size(0)
+                vd += dice_score(logits, y).item() * x.size(0)
+                vi += iou_score(logits, y).item() * x.size(0)
+                vs += ssim_score(logits, y).item() * x.size(0)
+        vl /= len(val_ds); vd /= len(val_ds); vi /= len(val_ds); vs /= len(val_ds)
 
-        print(f"[{epoch+1}] Train Loss {tl:.4f} Dice {td:.4f} | Val Loss {vl:.4f} Dice {vd:.4f}")
-
+        print(
+            f"[{epoch+1}] Train Loss {tl:.4f} Dice {td:.4f} IoU {ti:.4f} SSIM {ts:.4f} | "
+            f"Val Loss {vl:.4f} Dice {vd:.4f} IoU {vi:.4f} SSIM {vs:.4f}"
+        )
+        
         torch.save(model.state_dict(), f"{args.model}_supervised.pth")
+
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
