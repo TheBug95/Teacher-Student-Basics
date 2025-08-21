@@ -1,9 +1,10 @@
 import argparse, torch, tqdm, itertools
 from pathlib import Path
 from src.datasets import SkinPairDataset, UnlabeledDataset
-from src.model     import UNet
-from src.utils     import dice_score, find_pairs
-from src.ema       import update_ema
+from src.model import UNet
+from src.metrics import dice_score, iou_score, ssim_score
+from src.utils import find_pairs
+from src.ema import update_ema
 import torch.nn.functional as F
 
 def run(args):
@@ -52,7 +53,7 @@ def run(args):
     # --- 3. Entrenamiento --------------------------------------------------
     u_iter = iter(itertools.cycle(u_dl))   # iterador infinito
     for epoch in range(args.epochs):
-        student.train(); t_loss, t_dice = 0, 0
+        student.train(); t_loss, t_dice, t_iou, t_ssim = 0, 0, 0, 0
         for weak_l, strong_l, mask_l in tqdm.tqdm(l_dl, desc=f"Ep {epoch+1}/{args.epochs}"):
             weak_l, strong_l, mask_l = (x.to(device) for x in (weak_l, strong_l, mask_l))
 
@@ -81,18 +82,26 @@ def run(args):
 
             update_ema(student, teacher, alpha=args.ema)
 
-            t_loss += loss.item()*weak_l.size(0)
-            t_dice += dice_score(logit_sup, mask_l).item()*weak_l.size(0)
+            t_loss += loss.item() * weak_l.size(0)
+            t_dice += dice_score(logit_sup, mask_l).item() * weak_l.size(0)
+            t_iou += iou_score(logit_sup, mask_l).item() * weak_l.size(0)
+            t_ssim += ssim_score(logit_sup, mask_l).item() * weak_l.size(0)
 
         # --- 4. Validación --------------------------------------------------
-        student.eval(); v_dice = 0
+        student.eval(); v_dice, v_iou, v_ssim = 0, 0, 0
         with torch.no_grad():
             for weak, _, mask in val_dl:
                 weak, mask = weak.to(device), mask.to(device)
-                v_dice += dice_score(student(weak), mask).item()*weak.size(0)
-        v_dice /= len(l_val)
+                logits = student(weak)
+                v_dice += dice_score(logits, mask).item() * weak.size(0)
+                v_iou += iou_score(logits, mask).item() * weak.size(0)
+                v_ssim += ssim_score(logits, mask).item() * weak.size(0)
+        v_dice /= len(l_val); v_iou /= len(l_val); v_ssim /= len(l_val)
 
-        print(f"Epoch {epoch+1} | Train Dice {t_dice/len(l_train):.4f} | Val Dice {v_dice:.4f}")
+        print(
+            f"Epoch {epoch+1} | Train Dice {t_dice/len(l_train):.4f} IoU {t_iou/len(l_train):.4f} "
+            f"SSIM {t_ssim/len(l_train):.4f} | Val Dice {v_dice:.4f} IoU {v_iou:.4f} SSIM {v_ssim:.4f}"
+        )
         torch.save(student.state_dict(), "unet_semi.pth")
 
 if __name__ == "__main__":
