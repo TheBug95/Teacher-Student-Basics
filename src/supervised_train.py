@@ -1,10 +1,16 @@
+
 import argparse, torch, tqdm
 from pathlib import Path
 
 from src.datasets import SkinPairDataset
-from src.model import UNet
 from src.metrics import dice_score, iou_score, ssim_score
 from src.utils import find_pairs
+import argparse, torch, tqdm
+from pathlib import Path
+
+from src.datasets import SkinPairDataset
+from src.models   import get_model
+
 
 def run(args):
     img_dir  = Path(args.images)
@@ -19,7 +25,7 @@ def run(args):
     val_dl   = torch.utils.data.DataLoader(val_ds,   batch_size=args.bs)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model  = UNet().to(device)
+    model  = get_model(args.model).to(device)
     opt    = torch.optim.Adam(model.parameters(), lr=args.lr)
     crit   = torch.nn.BCEWithLogitsLoss()
 
@@ -52,8 +58,9 @@ def run(args):
             f"[{epoch+1}] Train Loss {tl:.4f} Dice {td:.4f} IoU {ti:.4f} SSIM {ts:.4f} | "
             f"Val Loss {vl:.4f} Dice {vd:.4f} IoU {vi:.4f} SSIM {vs:.4f}"
         )
+        
+        torch.save(model.state_dict(), f"{args.model}_supervised.pth")
 
-        torch.save(model.state_dict(), "unet_supervised.pth")
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
@@ -62,4 +69,10 @@ if __name__ == "__main__":
     p.add_argument("--bs", type=int, default=8)
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--epochs", type=int, default=20)
+    p.add_argument(
+        "--model",
+        default="sam2",
+        choices=["sam2", "medsam2", "mobilesam", "unet"],
+        help="modelo de segmentación",
+    )
     run(p.parse_args())
