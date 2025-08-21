@@ -103,7 +103,7 @@ def run(args):
         print(
             f"Epoch {epoch+1} | Train Dice {t_dice/len(l_train):.4f} IoU {t_iou/len(l_train):.4f} "
             f"SSIM {t_ssim/len(l_train):.4f} | Val Dice {v_dice:.4f} IoU {v_iou:.4f} SSIM {v_ssim:.4f}"
-      
+        )
         torch.save(student.state_dict(), f"{args.model}_semi.pth")
 
 if __name__ == "__main__":
