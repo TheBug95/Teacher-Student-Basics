@@ -1,9 +1,9 @@
 import argparse, torch, tqdm, itertools
 from pathlib import Path
 from src.datasets import SkinPairDataset, UnlabeledDataset
-from src.model     import UNet
-from src.utils     import dice_score, find_pairs
-from src.ema       import update_ema
+from src.models   import get_model
+from src.utils    import dice_score, find_pairs
+from src.ema      import update_ema
 import torch.nn.functional as F
 
 def run(args):
@@ -41,8 +41,8 @@ def run(args):
 
     # --- 2. Modelos --------------------------------------------------------
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    student = UNet().to(device)
-    teacher = UNet().to(device)
+    student = get_model(args.model).to(device)
+    teacher = get_model(args.model).to(device)
     teacher.load_state_dict(student.state_dict())
     teacher.eval()
 
@@ -93,7 +93,7 @@ def run(args):
         v_dice /= len(l_val)
 
         print(f"Epoch {epoch+1} | Train Dice {t_dice/len(l_train):.4f} | Val Dice {v_dice:.4f}")
-        torch.save(student.state_dict(), "unet_semi.pth")
+        torch.save(student.state_dict(), f"{args.model}_semi.pth")
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
@@ -105,4 +105,10 @@ if __name__ == "__main__":
     p.add_argument("--tau", type=float, default=0.7, help="umbral confianza")
     p.add_argument("--lmbda", type=float, default=1.0, help="peso consistencia")
     p.add_argument("--ema", type=float, default=0.99)
+    p.add_argument(
+        "--model",
+        default="sam2",
+        choices=["sam2", "medsam2", "mobilesam", "unet"],
+        help="modelo de segmentación",
+    )
     run(p.parse_args())
