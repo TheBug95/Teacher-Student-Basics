@@ -6,3 +6,5 @@ tqdm
 peft
 bitsandbytes
 transformers
+torchmetrics
+
