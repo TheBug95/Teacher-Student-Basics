@@ -17,3 +17,20 @@ model = load_model("facebook/sam2-huge", qlora=True)
 
 Los parámetros `r`, `alpha` y `dropout` pueden ajustarse según las necesidades del entrenamiento.
 
+## Entrenamiento con datasets en formato COCO
+
+Los conjuntos de datos de cataratas y retinopatía diabética incluidos en `data/raw/`
+siguen el formato COCO. Para entrenar modelos de segmentación es posible utilizar
+los scripts de `src/training`:
+
+```bash
+python -m src.training.supervised --train "data/raw/Cataract COCO Segmentation/train" \
+    --val "data/raw/Cataract COCO Segmentation/valid"
+
+python -m src.training.semi_supervised_train --train \
+    "data/raw/Diabetic-Retinopathy COCO Segmentation/train"
+```
+
+Cada carpeta (`train`, `valid`) debe contener las imágenes y el archivo
+`_annotations.coco.json` correspondiente.
+

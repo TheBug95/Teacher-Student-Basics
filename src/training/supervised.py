@@ -6,19 +6,17 @@ from pathlib import Path
 import torch
 import tqdm
 
-from src.data import SkinPairDataset
+from src.data import CocoSegDataset
 from src.models import get_model
-from src.utils import dice_score, iou_score, ssim_score, find_pairs
+from src.utils import dice_score, iou_score, ssim_score
 
 
 def run(args: argparse.Namespace) -> None:
-    img_dir = Path(args.images)
-    mask_dir = Path(args.masks)
+    train_dir = Path(args.train)
+    val_dir = Path(args.val)
 
-    pairs = find_pairs(img_dir, mask_dir)
-    split = int(len(pairs) * 0.8)
-    train_ds = SkinPairDataset(pairs[:split])
-    val_ds = SkinPairDataset(pairs[split:])
+    train_ds = CocoSegDataset(train_dir, train_dir / "_annotations.coco.json")
+    val_ds = CocoSegDataset(val_dir, val_dir / "_annotations.coco.json")
 
     train_dl = torch.utils.data.DataLoader(train_ds, batch_size=args.bs, shuffle=True)
     val_dl = torch.utils.data.DataLoader(val_ds, batch_size=args.bs)
@@ -72,8 +70,12 @@ def run(args: argparse.Namespace) -> None:
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry
     parser = argparse.ArgumentParser()
-    parser.add_argument("--images", required=True, help="carpeta con imágenes JPG")
-    parser.add_argument("--masks", required=True, help="carpeta con máscaras PNG")
+    parser.add_argument(
+        "--train", required=True, help="directorio de entrenamiento en formato COCO"
+    )
+    parser.add_argument(
+        "--val", required=True, help="directorio de validación en formato COCO"
+    )
     parser.add_argument("--bs", type=int, default=8)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--epochs", type=int, default=20)
