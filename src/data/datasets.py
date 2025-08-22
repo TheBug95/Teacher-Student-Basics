@@ -1,8 +1,11 @@
 """Datasets for supervised and semi-supervised training."""
 
-from typing import List, Tuple
+from pathlib import Path
+from typing import List, Optional, Sequence, Tuple
 
+import numpy as np
 from PIL import Image
+from pycocotools.coco import COCO
 import torchvision.transforms as T
 from torch.utils.data import Dataset
 
@@ -48,5 +51,43 @@ class UnlabeledDataset(Dataset):
         return self.w_t(img), self.s_t(img)
 
 
-__all__ = ["SkinPairDataset", "UnlabeledDataset"]
+class CocoSegDataset(Dataset):
+    """Dataset that builds masks on-the-fly from COCO annotations."""
+
+    def __init__(
+        self,
+        img_dir: str | Path,
+        ann_file: str | Path,
+        ids: Optional[Sequence[int]] = None,
+        size: Tuple[int, int] = (256, 256),
+    ) -> None:
+        self.img_dir = Path(img_dir)
+        self.coco = COCO(str(ann_file))
+        self.ids = list(ids) if ids is not None else list(self.coco.imgs.keys())
+        self.w_t = weak_transform()
+        self.s_t = strong_transform()
+        self.transform_mask = T.Compose(
+            [T.Resize(size, interpolation=T.InterpolationMode.NEAREST), T.ToTensor()]
+        )
+
+    def __len__(self) -> int:  # pragma: no cover - trivial
+        return len(self.ids)
+
+    def __getitem__(self, idx: int):
+        img_id = self.ids[idx]
+        info = self.coco.loadImgs(img_id)[0]
+        img = Image.open(self.img_dir / info["file_name"]).convert("RGB")
+        ann_ids = self.coco.getAnnIds(imgIds=[img_id])
+        anns = self.coco.loadAnns(ann_ids)
+
+        mask = np.zeros((info["height"], info["width"]), dtype=np.uint8)
+        for ann in anns:
+            mask = np.maximum(mask, self.coco.annToMask(ann))
+        mask = Image.fromarray(mask * 255)
+        mask = self.transform_mask(mask)
+        mask = (mask > 0.5).float()
+        return self.w_t(img), self.s_t(img), mask
+
+
+__all__ = ["SkinPairDataset", "UnlabeledDataset", "CocoSegDataset"]
 
